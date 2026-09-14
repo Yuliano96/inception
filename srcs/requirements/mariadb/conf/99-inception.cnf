@@ -1,0 +1,5 @@
+# options applied to the server
+[mysqld]
+# listens on all of the container's network interfaces.
+bind-address = 0.0.0.0
+port = 3306
