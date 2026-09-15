@@ -17,6 +17,8 @@ RUN apt-get update \
 		php8.2-xml \
 	&& rm -rf /var/lib/apt/lists/*
 
+ARG WORDPRESS_VERSION=7.1
+
 # Download: wp-cli.phar
 # The -fL option detects HTTP errors and follows any redirects.
 RUN curl -fL \
@@ -29,7 +31,7 @@ COPY conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
 
 # Download and extract the WordPress core into a source directory.
 RUN curl -fL \
-	https://wordpress.org/latest.tar.gz \
+	"https://wordpress.org/wordpress-${WORDPRESS_VERSION}.tar.gz" \
 	-o /tmp/wordpress.tar.gz \
 	&& tar -xzf /tmp/wordpress.tar.gz -C /usr/src \
 	&& rm -f /tmp/wordpress.tar.gz

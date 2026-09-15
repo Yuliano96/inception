@@ -5,8 +5,8 @@
 # the required privileges, set the root password, and stop the temporary
 # server. Finally, start the main MariaDB server as PID 1.
 
-# End the script if a command fails
-set -e
+# Stop the script if a command fails or an undefined variable is used.
+set -eu
 
 # install -d ...: creates /run/mysqld and /var/lib/mysql with owner and group mysql.
 install -d -o mysql -g mysql /run/mysqld /var/lib/mysql
@@ -33,12 +33,21 @@ if [ ! -d /var/lib/mysql/mysql ]; then
 	
 	# $! contains the PID of the last process started in the background.
 	 mariadb_pid=$!
+	
+	# Start the temporary MariaDB readiness-attempt counter.
+	attempt=1
 
-	# wait until the temporary server accepts local connections
+	# Wait until the temporary server accepts local socket connections.
 	until mariadb-admin ping --silent; do
+		if [ "$attempt" -ge 30 ]; then
+			echo "Error: temporary MariaDB server is not ready after 30 attempts." >&2
+			exit 1
+		fi
+
+		echo "Temporary MariaDB server is not ready. Attempt $attempt/30..."
+		attempt=$((attempt + 1))
 		sleep 1
 	done
-
 	echo "Temporary MariaDB server is ready"
 	
 	# The client connects locally to the temporary server

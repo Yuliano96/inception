@@ -24,6 +24,14 @@ fi
 : "${WORDPRESS_ADMIN_PASSWORD:?WORDPRESS_ADMIN_PASSWORD is not set}"
 : "${WORDPRESS_ADMIN_EMAIL:?WORDPRESS_ADMIN_EMAIL is not set}"
 
+# Check the variables required to create the regular WordPress user.
+: "${WORDPRESS_USER:?WORDPRESS_USER is not set}"
+: "${WORDPRESS_USER_PASSWORD:?WORDPRESS_USER_PASSWORD is not set}"
+: "${WORDPRESS_USER_EMAIL:?WORDPRESS_USER_EMAIL is not set}"
+
+# Use "author" as the regular user's role when no role is provided.
+WORDPRESS_USER_ROLE="${WORDPRESS_USER_ROLE:-author}"
+
 
 # Use "mariadb" when MYSQL_HOST has no value.
 MYSQL_HOST="${MYSQL_HOST:-mariadb}"
@@ -78,6 +86,18 @@ if ! wp core is-installed \
 		--admin_password="$WORDPRESS_ADMIN_PASSWORD" \
 		--admin_email="$WORDPRESS_ADMIN_EMAIL" \
 		--skip-email \
+		--allow-root
+fi
+
+# Create the regular WordPress user only when it does not already exist.
+if ! wp user get "$WORDPRESS_USER" \
+	--path=/var/www/html \
+	--allow-root >/dev/null 2>&1; then
+	echo "Creating regular WordPress user..."
+	wp user create "$WORDPRESS_USER" "$WORDPRESS_USER_EMAIL" \
+		--path=/var/www/html \
+		--user_pass="$WORDPRESS_USER_PASSWORD" \
+		--role="$WORDPRESS_USER_ROLE" \
 		--allow-root
 fi
 
