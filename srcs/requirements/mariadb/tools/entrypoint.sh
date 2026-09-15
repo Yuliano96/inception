@@ -14,12 +14,34 @@ install -d -o mysql -g mysql /run/mysqld /var/lib/mysql
 # The condition is met if /var/lib/mysql/mysql does not exist.
 if [ ! -d /var/lib/mysql/mysql ]; then
 
-	 # check the variables required for the first initialization
-	 : "${MYSQL_DATABASE:?MYSQL_DATABASE is not set}"
-	 : "${MYSQL_USER:?MYSQL_USER is not set}"
-	 : "${MYSQL_PASSWORD:?MYSQL_PASSWORD is not set}"
-	 : "${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is not set}"
-	 
+	# Check the non-sensitive variables required for the first initialization.
+	: "${MYSQL_DATABASE:?MYSQL_DATABASE is not set}"
+	: "${MYSQL_USER:?MYSQL_USER is not set}"
+
+	# Use the default Docker secret paths when no custom paths are provided.
+	MYSQL_PASSWORD_FILE="${MYSQL_PASSWORD_FILE:-/run/secrets/db_password}"
+	MYSQL_ROOT_PASSWORD_FILE="${MYSQL_ROOT_PASSWORD_FILE:-/run/secrets/db_root_password}"
+
+	# Stop if the required secret files cannot be read.
+	if [ ! -r "$MYSQL_PASSWORD_FILE" ]; then
+		echo "Error: cannot read the MariaDB user password secret." >&2
+		exit 1
+	fi
+
+	if [ ! -r "$MYSQL_ROOT_PASSWORD_FILE" ]; then
+		echo "Error: cannot read the MariaDB root password secret." >&2
+		exit 1
+	fi
+
+	# Read the passwords from the Docker secret files.
+	MYSQL_PASSWORD="$(cat "$MYSQL_PASSWORD_FILE")"
+	MYSQL_ROOT_PASSWORD="$(cat "$MYSQL_ROOT_PASSWORD_FILE")"
+
+	# Stop if any password secret is empty.
+	: "${MYSQL_PASSWORD:?MariaDB user password secret is empty}"
+	: "${MYSQL_ROOT_PASSWORD:?MariaDB root password secret is empty}"
+
+	
 	 echo "Initializing MariaDB data directory..."
 	 
 	# prepares a directory so that it can be used by mariadbd.

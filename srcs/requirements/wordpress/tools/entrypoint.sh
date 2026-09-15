@@ -12,26 +12,56 @@ if [ ! -f /var/www/html/wp-load.php ]; then
 	cp -a /usr/src/wordpress/. /var/www/html/
 fi
 
-# Check the variables required to configure WordPress.
+# Check the non-sensitive variables required to configure WordPress.
 : "${MYSQL_DATABASE:?MYSQL_DATABASE is not set}"
 : "${MYSQL_USER:?MYSQL_USER is not set}"
-: "${MYSQL_PASSWORD:?MYSQL_PASSWORD is not set}"
 
-# Check the variables required to install the WordPress website.
+# Check the non-sensitive variables required to install the website.
 : "${WORDPRESS_URL:?WORDPRESS_URL is not set}"
 : "${WORDPRESS_TITLE:?WORDPRESS_TITLE is not set}"
 : "${WORDPRESS_ADMIN_USER:?WORDPRESS_ADMIN_USER is not set}"
-: "${WORDPRESS_ADMIN_PASSWORD:?WORDPRESS_ADMIN_PASSWORD is not set}"
 : "${WORDPRESS_ADMIN_EMAIL:?WORDPRESS_ADMIN_EMAIL is not set}"
 
-# Check the variables required to create the regular WordPress user.
+# Check the non-sensitive variables required for the regular user.
 : "${WORDPRESS_USER:?WORDPRESS_USER is not set}"
-: "${WORDPRESS_USER_PASSWORD:?WORDPRESS_USER_PASSWORD is not set}"
 : "${WORDPRESS_USER_EMAIL:?WORDPRESS_USER_EMAIL is not set}"
 
 # Use "author" as the regular user's role when no role is provided.
 WORDPRESS_USER_ROLE="${WORDPRESS_USER_ROLE:-author}"
 
+# Use the default Docker secret paths when no custom paths are provided.
+MYSQL_PASSWORD_FILE="${MYSQL_PASSWORD_FILE:-/run/secrets/db_password}"
+WORDPRESS_ADMIN_PASSWORD_FILE="${WORDPRESS_ADMIN_PASSWORD_FILE:-/run/secrets/wp_admin_password}"
+WORDPRESS_USER_PASSWORD_FILE="${WORDPRESS_USER_PASSWORD_FILE:-/run/secrets/wp_user_password}"
+
+# Stop if any required secret file cannot be read.
+if [ ! -r "$MYSQL_PASSWORD_FILE" ]; then
+	echo "Error: cannot read the MariaDB user password secret." >&2
+	exit 1
+fi
+
+if [ ! -r "$WORDPRESS_ADMIN_PASSWORD_FILE" ]; then
+	echo "Error: cannot read the WordPress administrator password secret." >&2
+	exit 1
+fi
+
+if [ ! -r "$WORDPRESS_USER_PASSWORD_FILE" ]; then
+	echo "Error: cannot read the regular WordPress user password secret." >&2
+	exit 1
+fi
+
+# Read the passwords from the Docker secret files.
+MYSQL_PASSWORD="$(cat "$MYSQL_PASSWORD_FILE")"
+WORDPRESS_ADMIN_PASSWORD="$(cat "$WORDPRESS_ADMIN_PASSWORD_FILE")"
+WORDPRESS_USER_PASSWORD="$(cat "$WORDPRESS_USER_PASSWORD_FILE")"
+
+# Stop if any password secret is empty.
+: "${MYSQL_PASSWORD:?MariaDB user password secret is empty}"
+: "${WORDPRESS_ADMIN_PASSWORD:?WordPress administrator password secret is empty}"
+: "${WORDPRESS_USER_PASSWORD:?Regular WordPress user password secret is empty}"
+
+# Export the database password so the PHP connection probe can read it.
+export MYSQL_PASSWORD
 
 # Use "mariadb" when MYSQL_HOST has no value.
 MYSQL_HOST="${MYSQL_HOST:-mariadb}"
