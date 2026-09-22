@@ -11,6 +11,8 @@ COPY tools/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+Expose 3306
+
 #specifies the process that Docker will run when creating the container.
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
